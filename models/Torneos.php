@@ -28,10 +28,13 @@ class Torneos
                     t.horainicio,
                     t.idorganizador,
                     u.nombre AS organizador,
+                    c.nombre AS categoria,
                     t.estado
                 FROM torneo t
                 INNER JOIN usuario u
                     ON u.idusuario = t.idorganizador
+                INNER JOIN categoria c
+                    ON c.idcategoria = t.idcategoria
                 WHERE t.estado IN ('inscripciones', 'en_curso')
                 ORDER BY t.fechainicio ASC
                 LIMIT 2";
@@ -62,10 +65,13 @@ class Torneos
                     t.horainicio,
                     t.idorganizador,
                     u.nombre AS organizador,
+                    c.nombre AS categoria,
                     t.estado
                 FROM torneo t
                 INNER JOIN usuario u
                     ON u.idusuario = t.idorganizador
+                INNER JOIN categoria c
+                    ON c.idcategoria = t.idcategoria
                 WHERE t.estado IN ('inscripciones', 'en_curso')
                 ORDER BY t.fechainicio ASC";
 
@@ -209,12 +215,64 @@ class Torneos
         ];
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | VALIDACIÓN DE SOLAPAMIENTO DE HORARIOS (RNE-19 a RNE-24)
+    |--------------------------------------------------------------------------
+    |
+    | Verifica si un equipo ya tiene una inscripción APROBADA en otro torneo
+    | cuyo rango de fechas se cruza con el torneo que se está por aprobar.
+    |
+    */
+
+    public function tieneSolapamientoDeHorario($idequipo, $idusuario, $idtorneoNuevo)
+    {
+        $sql = "SELECT 1
+                FROM inscribe i
+                INNER JOIN torneo t ON t.idtorneo = i.idtorneo
+                INNER JOIN torneo tn ON tn.idtorneo = ?
+                WHERE i.estado = 'aprobada'
+                AND i.idtorneo <> ?
+                AND (
+                    (? IS NOT NULL AND i.idequipo = ?)
+                    OR (? IS NOT NULL AND i.idusuario = ?)
+                )
+                AND CONCAT(t.fechainicio, ' ', t.horainicio) < CONCAT(tn.fechafin, ' 23:59:59')
+                AND CONCAT(t.fechafin, ' 23:59:59') > CONCAT(tn.fechainicio, ' ', tn.horainicio)
+                LIMIT 1";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([
+            (int)$idtorneoNuevo,
+            (int)$idtorneoNuevo,
+            $idequipo, (int)$idequipo,
+            $idusuario, (int)$idusuario
+        ]);
+
+        return $stmt->fetch(PDO::FETCH_ASSOC) !== false;
+    }
+
     public function actualizarEstadoInscripcion($idinscripcion, $idorganizador, $estado)
     {
         $estadosPermitidos = ['pendiente', 'aprobada', 'rechazada', 'cancelada'];
 
         if (!in_array($estado, $estadosPermitidos, true)) {
             return false;
+        }
+
+        if ($estado === 'aprobada') {
+            $stmt = $this->pdo->prepare(
+                "SELECT i.idequipo, i.idusuario, i.idtorneo
+                 FROM inscribe i
+                 INNER JOIN torneo t ON t.idtorneo = i.idtorneo
+                 WHERE i.idinscripcion = ? AND t.idorganizador = ?"
+            );
+            $stmt->execute([(int)$idinscripcion, (int)$idorganizador]);
+            $datos = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($datos && $this->tieneSolapamientoDeHorario($datos['idequipo'], $datos['idusuario'], $datos['idtorneo'])) {
+                return false;
+            }
         }
 
         $sql = "UPDATE inscribe i
@@ -236,6 +294,7 @@ class Torneos
             (int)$idinscripcion,
             (int)$idorganizador
         ]);
+
     }
 
     public function obtenerTorneoPorId($idtorneo)
@@ -252,10 +311,13 @@ class Torneos
                     t.horainicio,
                     t.idorganizador,
                     u.nombre AS organizador,
+                    c.nombre AS categoria,
                     t.estado
                 FROM torneo t
                 INNER JOIN usuario u
                     ON u.idusuario = t.idorganizador
+                INNER JOIN categoria c
+                    ON c.idcategoria = t.idcategoria
                 WHERE t.idtorneo = ?
                 LIMIT 1";
 
@@ -643,14 +705,17 @@ class Torneos
     {
         $sql = "SELECT e.idequipo, e.nombre
                 FROM equipo e
-                WHERE e.idcreador = ?
-                OR e.idcapitan = ?
-                OR EXISTS (
-                    SELECT 1
-                    FROM integra i
-                    WHERE i.idequipo = e.idequipo
-                    AND i.idusuario = ?
-                    AND i.estado = 'activo'
+                WHERE e.estado = 'activo'
+                AND (
+                    e.idcreador = ?
+                    OR e.idcapitan = ?
+                    OR EXISTS (
+                        SELECT 1
+                        FROM integra i
+                        WHERE i.idequipo = e.idequipo
+                        AND i.idusuario = ?
+                        AND i.estado = 'activo'
+                    )
                 )
                 ORDER BY e.nombre ASC";
 
@@ -796,6 +861,19 @@ class Torneos
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    public function obtenerRondaGestionable($idronda, $idtorneo, $idorganizador)
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT r.idronda, r.fechainicio, r.fechafin
+             FROM ronda r
+             INNER JOIN torneo t ON t.idtorneo = r.idtorneo
+             WHERE r.idronda = ? AND r.idtorneo = ? AND t.idorganizador = ?"
+        );
+        $stmt->execute([(int)$idronda, (int)$idtorneo, (int)$idorganizador]);
+
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
     public function crearRonda($idtorneo, $idorganizador, $numero, $nombre, $fechainicio, $fechafin, $estado)
     {
         if (!$this->esPropietario($idtorneo, $idorganizador)) {
@@ -803,16 +881,28 @@ class Torneos
         }
 
         $sql = "INSERT INTO ronda (idtorneo, numero, nombre, fechainicio, fechafin, estado)
-                VALUES (?, ?, ?, NULLIF(?, ''), NULLIF(?, ''), 'pendiente')";
+                SELECT t.idtorneo, ?, ?, ?, ?, 'pendiente'
+                FROM torneo t
+                WHERE t.idtorneo = ? AND t.idorganizador = ?
+                AND ? < ?
+                AND ? >= CONCAT(t.fechainicio, ' 00:00:00')
+                AND ? <= CONCAT(t.fechafin, ' 23:59:59')";
         $stmt = $this->pdo->prepare($sql);
 
-        return $stmt->execute([
-            (int)$idtorneo,
+        $creada = $stmt->execute([
             (int)$numero,
             trim($nombre),
             $fechainicio,
+            $fechafin,
+            (int)$idtorneo,
+            (int)$idorganizador,
+            $fechainicio,
+            $fechafin,
+            $fechainicio,
             $fechafin
         ]);
+
+        return $creada && $stmt->rowCount() > 0;
     }
 
     public function actualizarRonda($idronda, $idtorneo, $idorganizador, $numero, $nombre, $fechainicio, $fechafin, $estado)
@@ -821,15 +911,19 @@ class Torneos
                 INNER JOIN torneo t ON t.idtorneo = r.idtorneo
                 SET r.numero = ?, r.nombre = ?, r.fechainicio = NULLIF(?, ''),
                     r.fechafin = NULLIF(?, '')
-                WHERE r.idronda = ? AND r.idtorneo = ? AND t.idorganizador = ?";
+                WHERE r.idronda = ? AND r.idtorneo = ? AND t.idorganizador = ?
+                AND ? < ?
+                AND ? >= CONCAT(t.fechainicio, ' 00:00:00')
+                AND ? <= CONCAT(t.fechafin, ' 23:59:59')";
         $stmt = $this->pdo->prepare($sql);
 
         $actualizado = $stmt->execute([
             (int)$numero, trim($nombre), $fechainicio, $fechafin,
-            (int)$idronda, (int)$idtorneo, (int)$idorganizador
+            (int)$idronda, (int)$idtorneo, (int)$idorganizador,
+            $fechainicio, $fechafin, $fechainicio, $fechafin
         ]);
 
-        if (!$actualizado) {
+        if (!$actualizado || $stmt->rowCount() === 0) {
             return false;
         }
 
@@ -854,8 +948,48 @@ class Torneos
         return $stmt->rowCount() > 0;
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | VALIDACIÓN DE PARTIDO DUPLICADO EN MISMA FECHA (RNE-35)
+    |--------------------------------------------------------------------------
+    |
+    | Verifica si un equipo (identificado por su idinscripcion) ya tiene
+    | un partido programado en la misma fecha dentro del mismo torneo.
+    |
+    */
+
+    public function equipoTienePartidoEnFecha($idtorneo, $idinscripcion, $fecha, $idpartidoExcluir = 0)
+    {
+        $sql = "SELECT 1
+                FROM partido p
+                WHERE p.idtorneo = ?
+                AND p.fecha = ?
+                AND p.estado <> 'cancelado'
+                AND p.idpartido <> ?
+                AND (p.idinscripcion_local = ? OR p.idinscripcion_visitante = ?)
+                LIMIT 1";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([
+            (int)$idtorneo,
+            $fecha,
+            (int)$idpartidoExcluir,
+            (int)$idinscripcion,
+            (int)$idinscripcion
+        ]);
+
+        return $stmt->fetch(PDO::FETCH_ASSOC) !== false;
+    }
+
     public function crearPartido($idtorneo, $idorganizador, $idronda, $local, $visitante, $fecha, $estado)
     {
+        if (
+            $this->equipoTienePartidoEnFecha($idtorneo, $local, $fecha)
+            || $this->equipoTienePartidoEnFecha($idtorneo, $visitante, $fecha)
+        ) {
+            return false;
+        }
+
         $sql = "INSERT INTO partido
                     (idtorneo, idronda, idinscripcion_local, idinscripcion_visitante, fecha, estado)
                 SELECT ?, r.idronda, ?, ?, ?, ?
@@ -866,15 +1000,18 @@ class Torneos
                 WHERE r.idronda = ? AND r.idtorneo = ? AND t.idorganizador = ?
                 AND il.idtorneo = r.idtorneo AND iv.idtorneo = r.idtorneo
                 AND il.estado = 'aprobada' AND iv.estado = 'aprobada'
-                AND il.idinscripcion <> iv.idinscripcion";
+                AND il.idinscripcion <> iv.idinscripcion
+                AND r.fechainicio IS NOT NULL AND r.fechafin IS NOT NULL
+                AND ? BETWEEN r.fechainicio AND r.fechafin";
         $stmt = $this->pdo->prepare($sql);
 
         $creado = $stmt->execute([
             (int)$idtorneo, (int)$local, (int)$visitante, $fecha, $estado,
-            (int)$local, (int)$visitante, (int)$idronda, (int)$idtorneo, (int)$idorganizador
+            (int)$local, (int)$visitante, (int)$idronda, (int)$idtorneo, (int)$idorganizador,
+            $fecha
         ]);
 
-        if (!$creado) {
+        if (!$creado || $stmt->rowCount() === 0) {
             return false;
         }
 
@@ -888,6 +1025,13 @@ class Torneos
             return false;
         }
 
+        if (
+            $this->equipoTienePartidoEnFecha($idtorneo, $local, $fecha, $idpartido)
+            || $this->equipoTienePartidoEnFecha($idtorneo, $visitante, $fecha, $idpartido)
+        ) {
+            return false;
+        }
+
         $sql = "UPDATE partido p
                 INNER JOIN torneo t ON t.idtorneo = p.idtorneo
                 SET p.idronda = ?, p.idinscripcion_local = ?, p.idinscripcion_visitante = ?,
@@ -895,16 +1039,23 @@ class Torneos
                 WHERE p.idpartido = ? AND p.idtorneo = ? AND t.idorganizador = ?
                 AND ? <> ?
                 AND EXISTS (SELECT 1 FROM inscribe i WHERE i.idinscripcion = ? AND i.idtorneo = p.idtorneo AND i.estado = 'aprobada')
-                AND EXISTS (SELECT 1 FROM inscribe i WHERE i.idinscripcion = ? AND i.idtorneo = p.idtorneo AND i.estado = 'aprobada')";
+                AND EXISTS (SELECT 1 FROM inscribe i WHERE i.idinscripcion = ? AND i.idtorneo = p.idtorneo AND i.estado = 'aprobada')
+                AND EXISTS (
+                    SELECT 1 FROM ronda r
+                    WHERE r.idronda = ? AND r.idtorneo = p.idtorneo
+                    AND r.fechainicio IS NOT NULL AND r.fechafin IS NOT NULL
+                    AND ? BETWEEN r.fechainicio AND r.fechafin
+                )";
         $stmt = $this->pdo->prepare($sql);
 
         $actualizado = $stmt->execute([
             (int)$idronda, (int)$local, (int)$visitante, $fecha, $estado,
             (int)$idpartido, (int)$idtorneo, (int)$idorganizador,
-            (int)$local, (int)$visitante, (int)$local, (int)$visitante
+            (int)$local, (int)$visitante, (int)$local, (int)$visitante,
+            (int)$idronda, $fecha
         ]);
 
-        if (!$actualizado) {
+        if (!$actualizado || $stmt->rowCount() === 0) {
             return false;
         }
 

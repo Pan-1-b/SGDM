@@ -20,7 +20,7 @@
                     <input type="text" name="q" value="<?= htmlspecialchars($filtro) ?>" placeholder="Buscar por nombre o correo">
                     <select name="rol">
                         <option value="">Todos los roles</option>
-                        <option value="participante" <?= $rol === 'participante' ? 'selected' : '' ?>>Jugadores</option>
+                        <option value="jugador" <?= $rol === 'jugador' ? 'selected' : '' ?>>Jugadores</option>
                         <option value="organizador" <?= $rol === 'organizador' ? 'selected' : '' ?>>Organizadores</option>
                     </select>
                     <button class="btn btn-secondary" type="submit"><i class="bi bi-search"></i> Filtrar</button>

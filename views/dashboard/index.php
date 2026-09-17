@@ -150,7 +150,7 @@ $nombre = $usuario['nombre'] ?? '';
             </a>
 
 
-            <?php if ($rol === 'jugador' || $rol === 'participante'): ?>
+            <?php if ($rol === 'jugador'): ?>
 
                 <a href="<?= BASE_URL ?>/equipos" class="dashboard-card">
 

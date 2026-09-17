@@ -147,7 +147,7 @@ class Usuarios
     public function obtenerRolPorNombre($nombreRol)
     {
         if ($nombreRol === 'jugador') {
-            $nombreRol = 'participante';
+            $nombreRol = 'jugador';
         }
 
         $sql = "SELECT
@@ -240,7 +240,7 @@ class Usuarios
                 FROM usuario u
                 INNER JOIN usuario_rol ur ON ur.idusuario = u.idusuario
                 INNER JOIN rol r ON r.idrol = ur.idrol
-                WHERE r.nombre IN ('participante', 'jugador', 'organizador')";
+                WHERE r.nombre IN ('jugador', 'organizador')";
         $params = [];
 
         if ($filtro !== '') {
@@ -250,9 +250,9 @@ class Usuarios
             $params[] = $valor;
         }
 
-        if ($rol !== '' && in_array($rol, ['participante', 'jugador', 'organizador'], true)) {
+        if ($rol !== '' && in_array($rol, ['jugador', 'organizador'], true)) {
             $sql .= " AND r.nombre = ?";
-            $params[] = $rol === 'jugador' ? 'participante' : $rol;
+            $params[] = $rol;
         }
 
         $sql .= " ORDER BY u.created_at DESC";
@@ -271,7 +271,7 @@ class Usuarios
                 INNER JOIN usuario_rol ur ON ur.idusuario = u.idusuario
                 INNER JOIN rol r ON r.idrol = ur.idrol
                 WHERE u.idusuario = ?
-                AND r.nombre IN ('participante', 'jugador', 'organizador')
+                AND r.nombre IN ('jugador', 'organizador')
                 LIMIT 1";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([(int)$idusuario]);
@@ -309,7 +309,7 @@ class Usuarios
                 INNER JOIN rol r
                     ON r.idrol = ur.idrol
                 WHERE u.estado = 'activo'
-                AND r.nombre IN ('jugador', 'participante')
+                AND r.nombre = 'jugador'
                 AND (:termino_filtro = ''
                      OR u.nombre LIKE :termino_nombre
                      OR u.email LIKE :termino_email)
@@ -338,7 +338,7 @@ class Usuarios
                     ON r.idrol = ur.idrol
                 WHERE u.idusuario <> ?
                 AND u.estado = 'activo'
-                AND r.nombre IN ('jugador', 'participante')
+                AND r.nombre = 'jugador'
                 ORDER BY u.nombre ASC";
 
         $stmt = $this->pdo->prepare($sql);

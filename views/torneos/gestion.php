@@ -12,6 +12,8 @@ foreach ($rondas as $ronda) {
         break;
     }
 }
+$inicioTorneo = date('Y-m-d\T00:00', strtotime($torneo['fechainicio']));
+$finTorneo = date('Y-m-d\T23:59', strtotime($torneo['fechafin']));
 ?>
 
 <main>
@@ -45,8 +47,8 @@ foreach ($rondas as $ronda) {
                     <div class="form-grid">
                         <input type="number" name="numero" min="1" placeholder="Número" required>
                         <input type="text" name="nombre" placeholder="Nombre de la ronda">
-                        <input type="datetime-local" name="fechainicio">
-                        <input type="datetime-local" name="fechafin">
+                        <input type="datetime-local" name="fechainicio" min="<?= $inicioTorneo ?>" max="<?= $finTorneo ?>" required>
+                        <input type="datetime-local" name="fechafin" min="<?= $inicioTorneo ?>" max="<?= $finTorneo ?>" required>
                         <input type="hidden" name="estado" value="pendiente">
                     </div>
                     <button class="btn btn-primary btn-block" type="submit">
@@ -87,8 +89,8 @@ foreach ($rondas as $ronda) {
                             <div class="form-grid">
                                 <input type="number" name="numero" min="1" value="<?= (int)$rondaActual['numero'] ?>" required>
                                 <input type="text" name="nombre" value="<?= htmlspecialchars($rondaActual['nombre'] ?? '') ?>" placeholder="Nombre de la ronda">
-                                <input type="datetime-local" name="fechainicio" value="<?= $rondaActual['fechainicio'] ? date('Y-m-d\TH:i', strtotime($rondaActual['fechainicio'])) : '' ?>">
-                                <input type="datetime-local" name="fechafin" value="<?= $rondaActual['fechafin'] ? date('Y-m-d\TH:i', strtotime($rondaActual['fechafin'])) : '' ?>">
+                                <input type="datetime-local" name="fechainicio" min="<?= $inicioTorneo ?>" max="<?= $finTorneo ?>" value="<?= $rondaActual['fechainicio'] ? date('Y-m-d\TH:i', strtotime($rondaActual['fechainicio'])) : '' ?>" required>
+                                <input type="datetime-local" name="fechafin" min="<?= $inicioTorneo ?>" max="<?= $finTorneo ?>" value="<?= $rondaActual['fechafin'] ? date('Y-m-d\TH:i', strtotime($rondaActual['fechafin'])) : '' ?>" required>
                                 <input type="hidden" name="estado" value="<?= htmlspecialchars($rondaActual['estado']) ?>">
                             </div>
                             <div class="form-actions">
@@ -123,7 +125,7 @@ foreach ($rondas as $ronda) {
                                             <option value="<?= (int)$inscripcion['idinscripcion'] ?>"><?= htmlspecialchars($inscripcion['nombre']) ?> (<?= $inscripcion['tipo'] ?>)</option>
                                         <?php endforeach; ?>
                                     </select>
-                                    <input type="datetime-local" name="fecha" required>
+                                    <input type="datetime-local" name="fecha" min="<?= $rondaActual['fechainicio'] ? date('Y-m-d\TH:i', strtotime($rondaActual['fechainicio'])) : '' ?>" max="<?= $rondaActual['fechafin'] ? date('Y-m-d\TH:i', strtotime($rondaActual['fechafin'])) : '' ?>" required>
                                     <input type="hidden" name="estado" value="programado">
                                 </div>
                                 <button class="btn btn-primary btn-block" type="submit"><i class="bi bi-plus-lg"></i> Crear partido</button>

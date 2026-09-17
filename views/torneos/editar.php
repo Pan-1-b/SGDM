@@ -5,6 +5,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 require_once __DIR__ . '/../layouts/header.php';
+$fechaMinima = (new DateTimeImmutable('today', new DateTimeZone('America/La_Paz')))->format('Y-m-d');
 ?>
 
 <main>
@@ -58,12 +59,12 @@ require_once __DIR__ . '/../layouts/header.php';
 
                         <div class="form-group">
                             <label for="fechainicio">Fecha de inicio</label>
-                            <input type="date" id="fechainicio" name="fechainicio" value="<?= htmlspecialchars($torneo['fechainicio']) ?>" required>
+                            <input type="date" id="fechainicio" name="fechainicio" min="<?= $fechaMinima ?>" value="<?= htmlspecialchars($torneo['fechainicio']) ?>" required>
                         </div>
 
                         <div class="form-group">
                             <label for="fechafin">Fecha de finalización</label>
-                            <input type="date" id="fechafin" name="fechafin" value="<?= htmlspecialchars($torneo['fechafin']) ?>" required>
+                            <input type="date" id="fechafin" name="fechafin" min="<?= $fechaMinima ?>" value="<?= htmlspecialchars($torneo['fechafin']) ?>" required>
                         </div>
 
                         <div class="form-group">

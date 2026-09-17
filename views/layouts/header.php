@@ -19,7 +19,7 @@ if ($autenticado && $rol === 'organizador') {
     $solicitudesPendientes = (new Torneos($pdo))->contarSolicitudesPendientes($_SESSION['usuario_id']);
 }
 
-if ($autenticado && ($rol === 'jugador' || $rol === 'participante')) {
+if ($autenticado && $rol === 'jugador') {
     require_once __DIR__ . '/../../models/Equipos.php';
     global $pdo;
     $invitacionesEquipoPendientes =
@@ -150,7 +150,7 @@ if ($autenticado && ($rol === 'jugador' || $rol === 'participante')) {
                             </a>
 
 
-                            <?php if ($rol === 'jugador' || $rol === 'participante'): ?>
+                            <?php if ($rol === 'jugador'): ?>
 
                                 <!-- Opciones del participante -->
 

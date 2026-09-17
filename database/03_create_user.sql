@@ -1,0 +1,3 @@
+CREATE USER IF NOT EXISTS 'sgdm_app'@'%' IDENTIFIED BY 'Pan_con_quesito';
+GRANT SELECT, INSERT, UPDATE, DELETE ON sgdm2.* TO 'sgdm_app'@'%';
+FLUSH PRIVILEGES;

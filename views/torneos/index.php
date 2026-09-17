@@ -52,6 +52,7 @@ require_once __DIR__ . '/../layouts/header.php';
                                     <div class="torneo-info">
                                         <span><i class="bi bi-diagram-3" aria-hidden="true"></i><strong>Tipo</strong><em><?= htmlspecialchars($torneo['tipo']) ?></em></span>
                                         <span><i class="bi bi-people" aria-hidden="true"></i><strong>Modalidad</strong><em><?= htmlspecialchars($torneo['modalidad']) ?></em></span>
+                                        <span><i class="bi bi-tag" aria-hidden="true"></i><strong>Categoría</strong><em><?= htmlspecialchars($torneo['categoria']) ?></em></span>
                                         <span><i class="bi bi-person" aria-hidden="true"></i><strong>Organizador</strong><em><?= htmlspecialchars($torneo['organizador']) ?></em></span>
                                         <span><i class="bi bi-clock" aria-hidden="true"></i><strong>Hora de inicio</strong><em><?= htmlspecialchars($torneo['horainicio']) ?></em></span>
                                     </div>

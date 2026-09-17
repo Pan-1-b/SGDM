@@ -31,8 +31,7 @@ class AuthMiddleware
         }
 
         $aliasRoles = [
-            'jugador' => ['participante'],
-            'participante' => ['jugador'],
+            'jugador' => ['jugador'],
             'organizador' => ['organizador'],
             'administrador' => ['administrador']
         ];

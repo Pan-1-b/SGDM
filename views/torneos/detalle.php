@@ -21,6 +21,10 @@
                     <strong><?= htmlspecialchars($torneo['modalidad']) ?></strong>
                 </div>
                 <div class="tournament-meta-card">
+                    <span class="meta-label">Categoría</span>
+                    <strong><?= htmlspecialchars($torneo['categoria']) ?></strong>
+                </div>
+                <div class="tournament-meta-card">
                     <span class="meta-label">Organizador</span>
                     <strong><?= htmlspecialchars($torneo['organizador']) ?></strong>
                 </div>
@@ -202,6 +206,23 @@
                     </div>
                 </div>
             </section>
+         
+
+
+<pre>
+
+
+<?php
+/*var_dump([
+    'puedeInscribirse' => $puedeInscribirse,
+    'autenticado' => isset($_SESSION['usuario_id']),
+    'rol_jugador' => AuthMiddleware::tieneRol('jugador'),
+    'estado_torneo' => $torneo['estado'],
+    'modalidad' => $torneo['modalidad'],
+    'inscripcionActual' => $inscripcionActual ?? 'todavia no calculada'
+]);*/
+?>
+</pre>
 
             <?php if ($puedeInscribirse): ?>
                 <div class="tournament-section tournament-registration">
@@ -215,7 +236,7 @@
                         </div>
                     <?php elseif ($torneo['modalidad'] === 'individual'): ?>
                         <form action="<?= BASE_URL ?>/torneos/inscribirse/<?= (int)$torneo['idtorneo'] ?>" method="POST" class="inline-form js-json-form">
-                            <button type="submit" class="btn btn-primary">Solicitar inscripción individual</button>
+                            <button type="submit" class="btn btn-primary">Solicitar inscripción al organizador</button>
                         </form>
                     <?php else: ?>
                         <?php if (empty($misEquipos)): ?>

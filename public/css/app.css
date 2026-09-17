@@ -1226,9 +1226,13 @@ header {
     display: grid;
     width: 100%;
     min-width: 0;
-    grid-template-columns: minmax(120px, 155px) minmax(120px, 155px) minmax(145px, 1fr) minmax(140px, 1.25fr);
+    grid-template-columns:
+        minmax(120px, 155px)
+        minmax(120px, 155px)
+        minmax(145px, 1fr)
+        minmax(140px, 1.25fr);
     align-items: end;
-    gap: 0.65rem;
+    gap: 2rem;
 }
 
 .managed-match-details .score-form .score-input {
@@ -1257,7 +1261,7 @@ header {
     }
 }
 
-@media (max-width: 560px) {
+@media (max-width: 1433px) {
     .managed-match-details .score-form {
         grid-template-columns: 1fr;
         gap: 0.75rem;
